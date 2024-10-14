@@ -1,0 +1,28 @@
+- name: My first play
+  hosts: myhosts
+  # requires set up of ssh key gen
+  remote_user: root
+  # This will not work without python already install on the server. See readme.md for more details.
+  tasks:
+    - name: Ping my hosts
+      ansible.builtin.ping:
+
+    - name: Print message
+      ansible.builtin.debug:
+        msg: Hello world
+    
+    - name: Check Running Containers
+      command: docker ps 
+      register: docker_ps_output
+
+    - name: Output running containers
+      debug:
+        var: docker_ps_output.stdout_lines
+
+    - name: Fetch Running Container Ids
+      command: docker ps -q
+      register: docker_ids_output
+
+    - name: Output running container Ids
+      debug:
+        var: docker_ids_output.stdout_lines
