@@ -26,3 +26,36 @@
     - name: Output running container Ids
       debug:
         var: docker_ids_output.stdout_lines
+
+    - name: Check if Docker Compose is installed
+      command: docker-compose --version
+      register: compose_installed
+      ignore_errors: true
+
+    # parse current tag version from the curl response and then attempt the install
+    - name: Get latest Docker Compose version
+      uri:
+        url: https://api.github.com/repos/docker/compose/releases/latest
+        return_content: yes
+      register: compose_info
+
+    - name: Parse latest version from JSON
+      set_fact:
+        latest_compose_version: "{{ compose_info.json.tag_name }}"
+
+    - name: Download Docker Compose binary
+      get_url: 
+        url: "https://github.com/docker/compose/releases/download/{{ latest_compose_version }}/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'  # Set executable permissions directly
+
+    - name: Verify Docker Compose installation
+      command: docker-compose --version
+      register: compose_version_output
+
+    - name: Display Docker Compose version
+      debug:
+        var: compose_version_output.stdout
+
+    #- name: Pull Jenkins Image
+    #  command: docker pull 
