@@ -1,0 +1,37 @@
+- name: Pull and Deploy Jenkins
+  hosts: myhosts
+  # requires set up of ssh key gen
+  remote_user: root
+  # This will not work without python already install on the server. See readme.md for more details.
+  vars:
+    jenkinsImageTag: latest
+    jenkinsPort: 7120
+  tasks:
+    - name: Ping my hosts
+      ansible.builtin.ping:
+
+    # check for any already deployed jenkins
+    - name: Check if Jenkins container is running
+      shell: docker ps -a --filter "name=jenkins" --format "{{'{{'}}.ID{{'}}'}}"
+      register: jenkins_container_id
+      changed_when: false
+
+    - name: Remove existing Jenkins container (if found)
+      command: docker rm -f {{ jenkins_container_id.stdout }}
+      when: jenkins_container_id.stdout != ""
+
+    # pull new image and proceed with deploy
+    - name: Pull Jenkins Image
+      command: docker pull jenkins/jenkins:{{ jenkinsImageTag }}
+
+    - name: Run Jenkins container
+      command: docker run -d --name jenkins -p {{ jenkinsPort }}:8080 jenkins/jenkins:{{ jenkinsImageTag }}
+
+    - name: Verify Jenkins container is running
+      shell: docker ps | grep jenkins
+      register: jenkins_status
+      ignore_errors: true 
+
+    - name: Output Jenkins container status
+      debug:
+        msg: "Jenkins container status: {{ jenkins_status.stdout }}"

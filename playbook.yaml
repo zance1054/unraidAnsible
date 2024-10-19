@@ -1,4 +1,4 @@
-- name: My first play
+- name: Install Dependencies to Unraid Server
   hosts: myhosts
   # requires set up of ssh key gen
   remote_user: root
@@ -26,7 +26,8 @@
     - name: Output running container Ids
       debug:
         var: docker_ids_output.stdout_lines
-
+        
+    # Validate/Install Docker Compose
     - name: Check if Docker Compose is installed
       command: docker-compose --version
       register: compose_installed
@@ -38,24 +39,48 @@
         url: https://api.github.com/repos/docker/compose/releases/latest
         return_content: yes
       register: compose_info
+      when: compose_installed.rc == 0
 
     - name: Parse latest version from JSON
       set_fact:
         latest_compose_version: "{{ compose_info.json.tag_name }}"
+      when: compose_installed.rc == 0
 
     - name: Download Docker Compose binary
       get_url: 
         url: "https://github.com/docker/compose/releases/download/{{ latest_compose_version }}/docker-compose-linux-x86_64"
         dest: /usr/local/bin/docker-compose
         mode: '0755'  # Set executable permissions directly
+      when: compose_installed.rc == 0
 
     - name: Verify Docker Compose installation
       command: docker-compose --version
       register: compose_version_output
-
+      
     - name: Display Docker Compose version
       debug:
         var: compose_version_output.stdout
 
-    #- name: Pull Jenkins Image
-    #  command: docker pull 
+    # Validate/Install Helm
+    - name: Check if Helm is installed
+      command: helm --version
+      register: helm_installed
+      ignore_errors: true
+
+    - name: Download Helm Binary
+      get_url:
+        url: "https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3"
+        dest: /usr/local/bin/get_helm.sh
+        mode: '0755'
+
+    - name: Install Helm
+      command: /usr/local/bin/get_helm.sh
+      when: helm_installed.rc != 0  # Only run if Helm is not installed
+
+    - name: Verify Helm installation
+      command: helm version
+      register: helm_output
+
+    - name: Display Helm version
+      debug:
+        var: helm_output.stdout
